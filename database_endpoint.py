@@ -46,18 +46,18 @@ def log_message(d):
 
 
 def is_signature_valid(payload, sig, platform):
-    if platform == 'Algorand':
-        alg_encoded_msg = json.dumps(payload).encode('utf-8')
-        verify = (algosdk.util.verify_bytes(alg_encoded_msg, sig, payload['sender_pk']))
-        return verify
-    elif platform == 'Ethereum':
-        eth_encoded_msg = eth_account.messages.encode_defunct(text=json.dumps(payload))
-        signer_pk = eth_account.Account.recover_message(eth_encoded_msg, signature=sig)
-        verify = (signer_pk == payload['sender_pk'])
-        return verify
+    if platform == 'Ethereum':
+        eth_enc_msg = eth_account.messages.encode_defunct(text = json.dumps(payload))
+        sr_pk = eth_account.Account.recover_message(eth_enc_msg, signature = sig)
+        ver = (sr_pk == payload['sender_pk'])
+        return ver
+    elif platform == 'Algorand':
+        alg_enc_msg = json.dumps(payload).encode('utf-8')
+        ver = (algosdk.util.verify_bytes(alg_enc_msg, sig, payload['sender_pk']))
+        return ver
     else:
-        verify = False
-        return verify
+        ver = False
+        return ver
 
 
 """
@@ -99,13 +99,13 @@ def trade():
         valid_signature = is_signature_valid(payload, sig, platform)
         if valid_signature == True:
             new_order = Order(
-                sender_pk=payload['sender_pk'],
-                receiver_pk=payload['receiver_pk'],
-                buy_currency=payload['buy_currency'],
-                sell_currency=payload['sell_currency'],
-                buy_amount=payload['buy_amount'],
-                sell_amount=payload['sell_amount'],
-                signature=sig
+                sender_pk = payload['sender_pk'],
+                receiver_pk = payload['receiver_pk'],
+                buy_currency = payload['buy_currency'],
+                sell_currency = payload['sell_currency'],
+                buy_amount = payload['buy_amount'],
+                sell_amount = payload['sell_amount'],
+                signature = sig
             )
             g.session.add(new_order)
             g.session.commit()
@@ -121,17 +121,17 @@ def trade():
 def order_book():
     # Your code here
     # Note that you can access the database session using g.session
-    all_orders = g.session.query(Order).all()
+    all_ord = g.session.query(Order).all()
     result = {'data': []}
-    for o in all_orders:
+    for ord in all_ord:
         order_data = {
-            'sender_pk': o.sender_pk,
-            'receiver_pk': o.receiver_pk,
-            'buy_currency': o.buy_currency,
-            'sell_currency': o.sell_currency,
-            'buy_amount': o.buy_amount,
-            'sell_amount': o.sell_amount,
-            'signature': o.signature,
+            'sender_pk': ord.sender_pk,
+            'receiver_pk': ord.receiver_pk,
+            'buy_currency': ord.buy_currency,
+            'sell_currency': ord.sell_currency,
+            'buy_amount': ord.buy_amount,
+            'sell_amount': ord.sell_amount,
+            'signature': ord.signature,
         }
         result['data'].append(order_data)
     result = jsonify(result)
