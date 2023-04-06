@@ -18,55 +18,80 @@ DBSession = sessionmaker(bind=engine)
 
 app = Flask(__name__)
 
-#These decorators allow you to use g.session to access the database inside the request code
+
+# These decorators allow you to use g.session to access the database inside the request code
 @app.before_request
 def create_session():
-    g.session = scoped_session(DBSession) #g is an "application global" https://flask.palletsprojects.com/en/1.1.x/api/#application-globals
+    g.session = scoped_session(
+        DBSession)  # g is an "application global" https://flask.palletsprojects.com/en/1.1.x/api/#application-globals
+
 
 @app.teardown_appcontext
 def shutdown_session(response_or_exc):
     g.session.commit()
     g.session.remove()
 
+
 """
 -------- Helper methods (feel free to add your own!) -------
 """
 
-def log_message(d)
+
+def log_message(d):
     # Takes input dictionary d and writes it to the Log table
+    log_entry = Log(message=json.dumps(d))
+    g.session.add(log_entry)
+    g.session.commit()
     pass
+
+
+def is_signature_valid(payload, sig, platform):
+    if platform == 'Algorand':
+        alg_encoded_msg = json.dumps(payload).encode('utf-8')
+        verify = (algosdk.util.verify_bytes(alg_encoded_msg, sig, payload['sender_pk']))
+        return verify
+    elif platform == 'Ethereum':
+        eth_encoded_msg = eth_account.messages.encode_defunct(text=json.dumps(payload))
+        signer_pk = eth_account.Account.recover_message(eth_encoded_msg, signature=sig)
+        verify = (signer_pk == payload['sender_pk'])
+        return verify
+    else:
+        verify = False
+        return verify
+
 
 """
 ---------------- Endpoints ----------------
 """
-    
+
+
 @app.route('/trade', methods=['POST'])
 def trade():
     if request.method == "POST":
         content = request.get_json(silent=True)
-        print( f"content = {json.dumps(content)}" )
-        columns = [ "sender_pk", "receiver_pk", "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform" ]
-        fields = [ "sig", "payload" ]
+        print(f"content = {json.dumps(content)}")
+        columns = ["sender_pk", "receiver_pk", "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform"]
+        fields = ["sig", "payload"]
         error = False
         for field in fields:
             if not field in content.keys():
-                print( f"{field} not received by Trade" )
-                print( json.dumps(content) )
+                print(f"{field} not received by Trade")
+                print(json.dumps(content))
                 log_message(content)
-                return jsonify( False )
-        
+                return jsonify(False)
+
         error = False
         for column in columns:
             if not column in content['payload'].keys():
-                print( f"{column} not received by Trade" )
+                print(f"{column} not received by Trade")
                 error = True
         if error:
-            print( json.dumps(content) )
+            print(json.dumps(content))
             log_message(content)
-            return jsonify( False )
-            
-        #Your code here
-        #Note that you can access the database session using g.session
+            return jsonify(False)
+
+        # Your code here
+        # Note that you can access the database session using g.session
         content = request.get_json(silent=True)
         payload = content['payload']
         sig = content['sig']
@@ -90,12 +115,12 @@ def trade():
             log_message(payload)
             result = jsonify(False)
             return result
-        
+
 
 @app.route('/order_book')
 def order_book():
-    #Your code here
-    #Note that you can access the database session using g.session
+    # Your code here
+    # Note that you can access the database session using g.session
     all_orders = g.session.query(Order).all()
     result = {'data': []}
     for o in all_orders:
@@ -111,6 +136,7 @@ def order_book():
         result['data'].append(order_data)
     result = jsonify(result)
     return result
+
 
 if __name__ == '__main__':
     app.run(port='5002')
