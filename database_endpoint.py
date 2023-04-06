@@ -93,18 +93,18 @@ def trade():
         # Your code here
         # Note that you can access the database session using g.session
         content = request.get_json(silent=True)
-        payload = content['payload']
+        payl = content['payload']
         sig = content['sig']
-        platform = payload['platform']
-        valid_signature = is_signature_valid(payload, sig, platform)
+        platform = payl['platform']
+        valid_signature = is_signature_valid(payl, sig, platform)
         if valid_signature == True:
             new_order = Order(
-                sender_pk = payload['sender_pk'],
-                receiver_pk = payload['receiver_pk'],
-                buy_currency = payload['buy_currency'],
-                sell_currency = payload['sell_currency'],
-                buy_amount = payload['buy_amount'],
-                sell_amount = payload['sell_amount'],
+                sender_pk = payl['sender_pk'],
+                receiver_pk = payl['receiver_pk'],
+                buy_currency = payl['buy_currency'],
+                sell_currency = payl['sell_currency'],
+                buy_amount = payl['buy_amount'],
+                sell_amount = payl['sell_amount'],
                 signature = sig
             )
             g.session.add(new_order)
@@ -112,7 +112,7 @@ def trade():
             result = jsonify(True)
             return result
         else:
-            log_message(payload)
+            log_message(payl)
             result = jsonify(False)
             return result
 
