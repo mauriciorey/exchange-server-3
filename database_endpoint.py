@@ -65,78 +65,50 @@ def trade():
             
         #Your code here
         #Note that you can access the database session using g.session
-        sig = content['sig']
-        pk = content['payload']['sender_pk']
-        platform = content['payload']['platform']
+        content = request.get_json(silent=True)
         payload = content['payload']
-        payload2= json.dumps(payload)
-        order = {'sender_pk': payload['sender_pk'],
-             'receiver_pk': payload['receiver_pk'],
-            'buy_currency': payload['buy_currency'],
-            'sell_currency': payload['sell_currency'],
-            'buy_amount': payload['buy_amount'],
-            'sell_amount': payload['sell_amount'],
-            'signature':sig
-            }
-        order_obj = Order( sender_pk=order['sender_pk'],
-         receiver_pk=order['receiver_pk'],
-         buy_currency=order['buy_currency'], 
-         sell_currency=order['sell_currency'], 
-         buy_amount=order['buy_amount'], 
-         sell_amount=order['sell_amount'],
-         signature=order['signature'] )
-
-        logError = {'message':payload2}
-        log_obj = Log(message = logError['message'])
-
-    
-        
-
-        result = False
-        try:
-            if platform == "Ethereum":
-                eth_encoded_msg = eth_account.messages.encode_defunct(text=payload2)
-                if (eth_account.Account.recover_message(eth_encoded_msg,signature=sig) == pk):
-                    result = True
-            elif platform == "Algorand":
-                #result = algosdk.util.verify_bytes(message.encode('utf-8'),sig,pk)
-                if algosdk.util.verify_bytes(payload2.encode('utf-8'),sig,pk):
-                    result = True
-            else:
-                result = False
-        except:
-            print("verification part throw exception")
-            result = False
-        
-        #If the signature verifies, store the signature, as well as all of the fields under the ‘payload’ in the “Order” 
-        # #table EXCEPT for 'platform’.
-        if result:
-            g.session.add(order_obj)
+        sig = content['sig']
+        platform = payload['platform']
+        valid_signature = is_signature_valid(payload, sig, platform)
+        if valid_signature == True:
+            new_order = Order(
+                sender_pk=payload['sender_pk'],
+                receiver_pk=payload['receiver_pk'],
+                buy_currency=payload['buy_currency'],
+                sell_currency=payload['sell_currency'],
+                buy_amount=payload['buy_amount'],
+                sell_amount=payload['sell_amount'],
+                signature=sig
+            )
+            g.session.add(new_order)
             g.session.commit()
-            return jsonify(order)
-            
-
-        # If the signature does not verify, do not insert the order into the “Order” table.
-        # Instead, insert a record into the “Log” table, with the message field set to be json.dumps(payload).
+            result = jsonify(True)
+            return result
         else:
-            g.session.add(log_obj)
-            g.session.commit()
-            return jsonify(logError)
+            log_message(payload)
+            result = jsonify(False)
+            return result
         
 
 @app.route('/order_book')
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
-    result = []
-    for u in g.session.query(Order).all():
-        dic = u.__dict__
-        newDic = {k:dic[k] for k in ["sender_pk","receiver_pk","buy_currency","sell_currency","buy_amount","sell_amount","signature"]}
-        result.append(newDic)
-        
-    res2 = {"data":result}
-
-    return jsonify(res2)
+    all_orders = g.session.query(Order).all()
+    result = {'data': []}
+    for o in all_orders:
+        order_data = {
+            'sender_pk': o.sender_pk,
+            'receiver_pk': o.receiver_pk,
+            'buy_currency': o.buy_currency,
+            'sell_currency': o.sell_currency,
+            'buy_amount': o.buy_amount,
+            'sell_amount': o.sell_amount,
+            'signature': o.signature,
+        }
+        result['data'].append(order_data)
+    result = jsonify(result)
+    return result
 
 if __name__ == '__main__':
     app.run(port='5002')
