@@ -10,6 +10,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import load_only
 
 from models import Base, Order, Log
+import models
+
 engine = create_engine('sqlite:///orders.db')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
