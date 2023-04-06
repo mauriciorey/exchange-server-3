@@ -70,7 +70,14 @@ def trade():
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
-    return jsonify(result)
+    result = []
+    for x in g.session.query(Order).all():
+        dict = x.__dict__
+        nDic = { v : dict[v] for v in ["sender_pk","receiver_pk","buy_currency","sell_currency","buy_amount","sell_amount","signature"]}
+        result.append(nDic)
+        
+    r2 = {"data":result}
+    return jsonify(r2)
 
 if __name__ == '__main__':
     app.run(port='5002')
